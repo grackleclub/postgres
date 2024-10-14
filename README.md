@@ -18,6 +18,9 @@ Files for initailizing (and tearing down) a database are included in the `Migrat
 > [!TIP]
 > Migrations files should be numbered in the order they are to be run, first `down`, then `up`. As such, all `down` migrations should be odd; all `up` migrations should be even. Migrations will return a list of `Migration` objects, containing _Direction_, _Filename_, and _Content_.
 
+
+### usage
+Use either `local` or `embed` filesystems to produce a slice of `Migration`s
 ```go
 // Migrations represents a single SQL migration file,
 // including the direction, file name, and content
@@ -26,26 +29,40 @@ type Migration struct {
     Filename  string
     Content   string
 }
+```
 
-var migrations []Migration
-var err error
-// first argument should be the path to directory with the migrations files,
-// second argument should be the direction of the migraiton
-migrations, err = Migrations("example-migrations", "down")
-if err != nil {
-    return nil, fmt.Errorf("unable to fetch migrations: %w", err)
+#### local
+For a local filesystem, just provide the path.
+```go
+m, err := Migrations(os.DirFS("."), "migrations-dir-name", "up")
+if err := nil {
+    return fmt.Errorf("migration failed: %w", err)
 }
+```
 
-// executing migrations is outside the scope of this package,
-// but may be implemented as such
-for _, migration := range migrations {
-    slog.Info("running a migration",
-        "direction", migration.Direction,
-        "filename", migration.Filename,
+#### embed
+For an embed filesystem, provide the `embed.FS` and a filename.
+```go
+//go:embed migrations
+var migrationsDirEmbed embed.FS
+
+migrations, err := Migrations(migrationsDirEmbed, "migrations-dir-name", "up")
+if err := nil {
+    return fmt.Errorf("migration failed: %w", err)
+}
+```
+
+#### applying migrations
+Loop over the migrations to apply them to your database.
+```go
+for _, m := range migrations {
+    log.Info("running migration",
+        "file", m.Filename,
+        "direction", m.Direction,
     )
-    err := db.Execute(migration.Content, nil)
+    err := sql.Execute(m.Content)
     if err != nil {
-        return nil, fmt.Errorf("unable to execute migration: %w", err)
+        return fmt.Errorf("sql error on migration: %w", err)
     }
 }
 ```
