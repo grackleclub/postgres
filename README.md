@@ -34,7 +34,7 @@ type Migration struct {
 #### local
 For a local filesystem, just provide the path.
 ```go
-m, err := Migrations(os.DirFS("."), "migrations-dir-name", "up")
+migrations, err := Migrations(os.DirFS("."), "migrations-dir-name", "up")
 if err := nil {
     return fmt.Errorf("migration failed: %w", err)
 }
