@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"strings"
 )
 
 //go:embed example-migrations
@@ -19,8 +20,8 @@ type Migration struct {
 	Content   string
 }
 
-// Migrations reads an arbirary file system to return
-// a list of "up" or "down" migration SQL objects with:
+// Migrations reads an arbirary file system for *.<direction>.sql files,
+// returning a list of "up" or "down" migration SQL objects with:
 //   - filename
 //   - content
 //   - direction
@@ -48,13 +49,15 @@ func Migrations(fsys fs.FS, directory string, direction string) ([]Migration, er
 		if err != nil {
 			return nil, fmt.Errorf("unable to read file %q: %w", entry.Name(), err)
 		}
-		var migration = Migration{
-			Filename:  entry.Name(),
-			Content:   string(content),
-			Direction: direction,
+		expectedEnding := fmt.Sprintf("%s.sql", direction)
+		if strings.Contains(entry.Name(), expectedEnding) {
+			var migration = Migration{
+				Filename:  entry.Name(),
+				Content:   string(content),
+				Direction: direction,
+			}
+			migrations = append(migrations, migration)
 		}
-		// fmt.Printf("File: %s\nContent:\n%s\n", entry.Name(), string(content))
-		migrations = append(migrations, migration)
 	}
 	return migrations, nil
 }
